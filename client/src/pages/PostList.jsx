@@ -1,21 +1,27 @@
 import { Form, Link, useLoaderData } from 'react-router-dom'
-import { PostCard } from '../components/PostCard'
 import { useEffect, useRef } from 'react'
+import { PostCard } from '../components/PostCard'
 import { getUsers } from '../api/users'
 import { getPosts } from '../api/posts'
+import FormGroup from '../components/FormGroup'
 
 function PostList() {
   const {
     users,
     posts,
     filteredPosts,
-    searchParams: { query },
+    searchParams: { query, userId },
   } = useLoaderData()
   const queryRef = useRef()
+  const userIdRef = useRef()
 
   useEffect(() => {
-    queryRef.current.value = query
+    queryRef.current.value = query || ''
   }, [query])
+
+  useEffect(() => {
+    userIdRef.current.value = userId || ''
+  }, [userId])
 
   return (
     <>
@@ -27,15 +33,21 @@ function PostList() {
           </Link>
         </div>
       </h1>
-      <Form method="get" className="form mb-4">
+      <Form className="form mb-4">
         <div className="form-row">
-          <div className="form-group">
+          <FormGroup>
             <label htmlFor="query">Query</label>
             <input type="search" name="query" id="query" ref={queryRef} />
-          </div>
-          <div className="form-group">
+          </FormGroup>
+          <FormGroup>
             <label htmlFor="userId">Author</label>
-            <select type="search" name="userId" id="userId" defaultValue="">
+            <select
+              type="search"
+              name="userId"
+              id="userId"
+              defaultValue=""
+              ref={userIdRef}
+            >
               <option value="">Any</option>
               {users.map((user) => (
                 <option key={user.id} value={user.id} id="userId">
@@ -43,14 +55,14 @@ function PostList() {
                 </option>
               ))}
             </select>
-          </div>
+          </FormGroup>
           <button className="btn">Filter</button>
         </div>
       </Form>
       <div className="card-grid">
-        {filteredPosts === []
-          ? filteredPosts.map((post) => <PostCard key={post.id} {...post} />)
-          : posts.map((post) => <PostCard key={post.id} {...post} />)}
+        {posts.map((post) => (
+          <PostCard key={post.id} {...post} />
+        ))}
       </div>
     </>
   )
@@ -60,18 +72,19 @@ async function loader({ request: { signal, url } }) {
   const searchParams = new URL(url).searchParams
   const query = searchParams.get('query')
   const userId = searchParams.get('userId')
-  const users = await getUsers({ signal })
-  const posts = await getPosts({ request: { signal } })
-  let filteredPosts = []
+  const filterParams = { q: query }
+  if (userId !== '') filterParams.userId = userId
 
-  if (userId !== '') {
-    filteredPosts = await fetch(
-      `http://localhost:3000/posts?q=${query}&userId=${userId}`,
-      { request: { signal } }
-    ).then((res) => res.json())
+  const posts = getPosts({ signal, params: filterParams })
+  const users = getUsers({ signal })
+
+  return {
+    signal,
+    params: filterParams,
+    searchParams: { query, userId },
+    posts: await posts,
+    users: await users,
   }
-
-  return { searchParams: { query }, posts, filteredPosts, users }
 }
 
 export const postListRoute = {

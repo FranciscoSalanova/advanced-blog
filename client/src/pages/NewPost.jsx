@@ -1,83 +1,25 @@
-import { Form, Link, useLoaderData, useNavigation } from 'react-router-dom'
+import {
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigation,
+} from 'react-router-dom'
 import { getUsers } from '../api/users'
-import { checkTitle } from '../validators'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPost } from '../api/posts'
+import PostForm from '../components/PostForm'
+import { postFormValidation } from '../validators'
 
 const NewPost = () => {
   const users = useLoaderData()
   const { state } = useNavigation()
-  const [title, setTitle] = useState('')
-  // const [user, setUser] = useState('')
-  // const [postBody, setPostBody] = useState('')
-  const [isAfterFirstSubmit, setIsAfterFirstSubmit] = useState(false)
-  const titleRef = useRef()
-
-  useEffect(() => {
-    titleRef.current.focus()
-  }, [])
-
-  const titleErrors = useMemo(() => {
-    return isAfterFirstSubmit ? checkTitle(title) : []
-  }, [isAfterFirstSubmit, title])
+  const errors = useActionData()
 
   const isSubmitting = state === 'loading' || state === 'submitting'
-
-  function handleSubmit(e) {
-    if (titleErrors.length > 0) e.preventDefault()
-    return setIsAfterFirstSubmit(true)
-  }
 
   return (
     <div className="container">
       <h1 className="page-title">New Post</h1>
-      <Form method="post" className="form">
-        <div className="form-row">
-          {console.log(titleErrors.length)}
-          <div
-            className={`form-group ${titleErrors.length > 0 ? 'error' : ''}`}
-          >
-            <label htmlFor="title">Title</label>
-            <input
-              type="text"
-              name="title"
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              ref={titleRef}
-            />
-            {/* {console.log(title)} */}
-            <div className="error-message">Required</div>
-          </div>
-          <div className="form-group">
-            <label htmlFor="userId">Author</label>
-            <select name="userId" id="userId">
-              {users.map((user) => (
-                <option key={user.id} value={user.id} id="userId">
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="body">Body</label>
-            <textarea name="body" id="body"></textarea>
-          </div>
-        </div>
-        <div className="form-row form-btn-row">
-          <Link to={'..'} className="btn btn-outline">
-            Cancel
-          </Link>
-          <button
-            disabled={isSubmitting}
-            onClick={handleSubmit}
-            className="btn"
-          >
-            Save
-          </button>
-        </div>
-      </Form>
+      <PostForm users={users} isSubmitting={isSubmitting} errors={errors} />
     </div>
   )
 }
@@ -86,7 +28,28 @@ function loader({ request: { signal } }) {
   return getUsers({ signal })
 }
 
+async function action({ request }) {
+  const formData = await request.formData()
+  const title = formData.get('title')
+  const body = formData.get('body')
+  const userId = formData.get('userId')
+
+  const errors = postFormValidation({ title, body, userId })
+
+  if (Object.keys(errors).length > 0) {
+    return errors
+  }
+
+  const post = await createPost(
+    { userId, title, body },
+    { signal: request.signal }
+  )
+
+  return redirect(`/posts/${post.id}`)
+}
+
 export const newPostRoute = {
   loader,
+  action,
   element: <NewPost />,
 }

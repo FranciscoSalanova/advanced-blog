@@ -36,46 +36,12 @@ export const router = createBrowserRouter([
                   { index: true, ...postRoute },
                   {
                     path: 'edit',
-                    action: async ({ request, params: { postId } }) => {
-                      const formData = await request.formData()
-                      const title = formData.get('title')
-                      const body = formData.get('body')
-                      const userId = formData.get('userId')
-
-                      await fetch(`http://localhost:3000/posts/${postId}`, {
-                        method: 'PUT',
-                        signal: request.signal,
-                        headers: {
-                          'Content-type': 'application/json',
-                        },
-                        body: JSON.stringify({ title, body, userId }),
-                      }).then((res) => res.json())
-
-                      return redirect(`/posts/${postId}`)
-                    },
                     ...editPostRoute,
                   },
                 ],
               },
               {
                 path: 'new',
-                action: async ({ request }) => {
-                  const formData = await request.formData()
-                  const title = formData.get('title')
-                  const body = formData.get('body')
-                  const userId = formData.get('userId')
-
-                  await fetch('http://localhost:3000/posts', {
-                    method: 'POST',
-                    signal: request.signal,
-                    headers: {
-                      'Content-type': 'application/json',
-                    },
-                    body: JSON.stringify({ title, body, userId }),
-                  }).then((res) => res.json())
-
-                  return redirect('/posts')
-                },
                 ...newPostRoute,
               },
             ],
